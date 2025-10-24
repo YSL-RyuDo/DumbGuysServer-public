@@ -16,6 +16,7 @@ struct PlayerData
     int rankScore;
     int icon;
     int iconBorder;
+    bool tutorialDone = false;
 };
 
 class PlayerDataManager

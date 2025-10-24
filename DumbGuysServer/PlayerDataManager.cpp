@@ -41,6 +41,13 @@ void PlayerDataManager::Load()
         ss >> data.icon; ss.ignore();
         ss >> data.iconBorder;
 
+        if (!ss.eof()) {
+            ss.ignore();
+            int doneFlag = 0;
+            ss >> doneFlag;
+            data.tutorialDone = (doneFlag != 0);
+        }
+
         players[data.id] = data;
     }
 
@@ -57,7 +64,7 @@ void PlayerDataManager::Save()
         return;
     }
 
-    file << "id,nickname,level,exp,coin0,coin1,rank,rankScore,icon,iconBorder\n";
+    file << "id,nickname,level,exp,coin0,coin1,rank,rankScore,icon,iconBorder,tutorialDone\n";
 
     for (auto& entry : players)
     {
@@ -71,7 +78,8 @@ void PlayerDataManager::Save()
             << data.rank << ","
             << data.rankScore << ","
             << data.icon << ","
-            << data.iconBorder << "\n";
+            << data.iconBorder << ","
+            << (data.tutorialDone ? 1 : 0) << "\n";
     }
 
     file.close();
@@ -102,6 +110,7 @@ void PlayerDataManager::AddNewPlayer(const std::string& id, const std::string& n
     data.rankScore = 0;
     data.icon = 0;
     data.iconBorder = 0;
+    data.tutorialDone = false;
 
     players[id] = data;
     Save();

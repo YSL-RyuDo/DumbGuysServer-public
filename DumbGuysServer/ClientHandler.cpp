@@ -274,6 +274,53 @@ void ClientHandler::Run()
             else
                 response = R"({"type":"enemy_info","result":false,"msg":"enemy not found"})";
                 }
+        // --- 튜토리얼 정보 요청 ---
+        else if (json.find("\"cmd\":\"get_tutorial_info\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            if (nickname.empty())
+            {
+                response = R"({"type":"tutorial_info","result":false,"msg":"missing nickname"})";
+            }
+            else
+            {
+                PlayerData* data = playerDataMgr->GetByNickname(nickname);
+                if (data)
+                {
+                    response = "{";
+                    response += "\"type\":\"tutorial_info\",";
+                    response += "\"nickname\":\"" + data->nickname + "\",";
+                    response += "\"tutorialDone\":" + std::string(data->tutorialDone ? "true" : "false");
+                    response += "}";
+                }
+                else
+                {
+                    response = R"({"type":"tutorial_info","result":false,"msg":"player not found"})";
+                }
+            }
+            }
+            // --- 튜토리얼 정보 업데이트 ---
+        else if (json.find("\"cmd\":\"set_tutorial_done\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+
+            PlayerData* data = playerDataMgr->GetByNickname(nickname);
+            if (data)
+            {
+                data->tutorialDone = true;
+                playerDataMgr->Save();
+
+                response = R"({"type":"tutorial_update_result","result":true,"msg":"tutorial done"})";
+                std::cout << "[Tutorial] Marked tutorial done for " << nickname << std::endl;
+            }
+            else
+            {
+                response = R"({"type":"tutorial_update_result","result":false,"msg":"player not found"})";
+            }
+        }
+
+
+
         // --- 매칭 요청 ---
         else if (json.find("\"cmd\":\"request_match\"") != std::string::npos)
         {
