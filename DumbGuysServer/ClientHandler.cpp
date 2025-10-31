@@ -755,6 +755,149 @@ void ClientHandler::Run()
                 response = R"({"type":"leave_room_ack","msg":"player left room"})";
             }
 }
+        else if (json.find("\"cmd\":\"attack\"") != std::string::npos)
+        {
+            std::string attacker = findStringField(json, "attacker");
+            std::string target = findStringField(json, "target");
+            int damage = 0;
+            findIntField(json, "damage", damage);
+
+            Room* room = roomMgr->FindRoomByPlayer(attacker);
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::cout << "[Room #" << room->roomId << "] Attack from "
+                    << attacker << " → " << target
+                    << " (" << damage << " dmg)" << std::endl;
+
+                SOCKET targetSocket = INVALID_SOCKET;
+                SOCKET attackerSocket = INVALID_SOCKET;
+
+                if (room->player1.nickname == attacker)
+                {
+                    attackerSocket = room->player1.socket;
+                    targetSocket = room->player2.socket;
+                }
+                else if (room->player2.nickname == attacker)
+                {
+                    attackerSocket = room->player2.socket;
+                    targetSocket = room->player1.socket;
+                }
+
+                if (targetSocket != INVALID_SOCKET && attackerSocket != INVALID_SOCKET)
+                {
+                    // === 공통 "player_hit" 메시지 생성 ===
+                    std::string hitMsg = "{";
+                    hitMsg += "\"type\":\"player_hit\",";
+                    hitMsg += "\"attacker\":\"" + attacker + "\",";
+                    hitMsg += "\"target\":\"" + target + "\",";
+                    hitMsg += "\"damage\":" + std::to_string(damage);
+                    hitMsg += "}";
+
+                    uint32_t len = (uint32_t)hitMsg.size();
+
+                    // 공격자에게도 보냄
+                    send(attackerSocket, (char*)&len, 4, 0);
+                    send(attackerSocket, hitMsg.c_str(), len, 0);
+
+                    // 피격자에게도 보냄
+                    send(targetSocket, (char*)&len, 4, 0);
+                    send(targetSocket, hitMsg.c_str(), len, 0);
+
+                    std::cout << "[Room #" << room->roomId
+                        << "] Sent 'player_hit' to both attacker and target.\n";
+
+                    response = R"({"type":"attack_ack","msg":"attack broadcasted"})";
+                }
+                else
+                {
+                    response = R"({"type":"error","msg":"attacker or target socket invalid"})";
+                }
+            }
+            }
+        else if (json.find("\"cmd\":\"attack_anim\"") != std::string::npos)
+        {
+            std::string attacker = findStringField(json, "attacker");
+            Room* room = roomMgr->FindRoomByPlayer(attacker);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                SOCKET targetSocket = INVALID_SOCKET;
+
+                if (room->player1.nickname == attacker)
+                    targetSocket = room->player2.socket;
+                else if (room->player2.nickname == attacker)
+                    targetSocket = room->player1.socket;
+
+                if (targetSocket != INVALID_SOCKET)
+                {
+                    std::string animMsg = "{";
+                    animMsg += "\"type\":\"enemy_attack_anim\",";
+                    animMsg += "\"attacker\":\"" + attacker + "\"";
+                    animMsg += "}";
+
+                    uint32_t len = (uint32_t)animMsg.size();
+                    send(targetSocket, (char*)&len, 4, 0);
+                    send(targetSocket, animMsg.c_str(), len, 0);
+
+                    std::cout << "[Room #" << room->roomId << "] Broadcast attack_anim from "
+                        << attacker << " to opponent.\n";
+
+                    response.clear(); // 클라이언트에 별도 응답 필요 없음
+                }
+            }
+}
+        else if (json.find("\"cmd\":\"death_anim\"") != std::string::npos)
+        {
+            std::string attacker = findStringField(json, "attacker");
+            Room* room = roomMgr->FindRoomByPlayer(attacker);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::cout << "[Room #" << room->roomId << "] " << attacker << " died → notifying opponent." << std::endl;
+
+                // 상대 소켓 찾기
+                SOCKET targetSocket = INVALID_SOCKET;
+                if (room->player1.nickname == attacker)
+                    targetSocket = room->player2.socket;
+                else if (room->player2.nickname == attacker)
+                    targetSocket = room->player1.socket;
+
+                if (targetSocket != INVALID_SOCKET)
+                {
+                    // === 상대방에게 enemy_die_anim 전송 ===
+                    std::string msg = "{";
+                    msg += "\"type\":\"enemy_die_anim\",";
+                    msg += "\"attacker\":\"" + attacker + "\"";
+                    msg += "}";
+
+                    uint32_t len = (uint32_t)msg.size();
+                    send(targetSocket, (char*)&len, 4, 0);
+                    send(targetSocket, msg.c_str(), len, 0);
+
+                    std::cout << "[Room #" << room->roomId
+                        << "] Sent enemy_die_anim → opponent notified." << std::endl;
+
+                    // 공격자(죽은 쪽)에게도 확인 메시지 보냄 (선택사항)
+                    response = R"({"type":"death_ack","msg":"death broadcasted"})";
+                }
+                else
+                {
+                    response = R"({"type":"error","msg":"opponent socket invalid"})";
+                }
+            }
+            }
 
 
         // --- 알 수 없는 명령 ---
