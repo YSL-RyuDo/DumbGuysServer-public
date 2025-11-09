@@ -39,14 +39,15 @@ void PlayerDataManager::Load()
         ss >> data.rank; ss.ignore();
         ss >> data.rankScore; ss.ignore();
         ss >> data.icon; ss.ignore();
-        ss >> data.iconBorder;
+        ss >> data.iconBorder; ss.ignore();
 
-        if (!ss.eof()) {
-            ss.ignore();
-            int doneFlag = 0;
-            ss >> doneFlag;
-            data.tutorialDone = (doneFlag != 0);
-        }
+        int doneFlag = 0;
+        int stage = 0;
+        ss >> doneFlag; ss.ignore();
+        ss >> stage;
+
+        data.tutorialDone = (doneFlag != 0);
+        data.tutorialStage = stage;
 
         players[data.id] = data;
     }
@@ -64,7 +65,7 @@ void PlayerDataManager::Save()
         return;
     }
 
-    file << "id,nickname,level,exp,coin0,coin1,rank,rankScore,icon,iconBorder,tutorialDone\n";
+    file << "id,nickname,level,exp,coin0,coin1,rank,rankScore,icon,iconBorder,tutorialDone,tutorialStage\n";
 
     for (auto& entry : players)
     {
@@ -79,7 +80,8 @@ void PlayerDataManager::Save()
             << data.rankScore << ","
             << data.icon << ","
             << data.iconBorder << ","
-            << (data.tutorialDone ? 1 : 0) << "\n";
+            << (data.tutorialDone ? 1 : 0) << ","
+            << data.tutorialStage << "\n";
     }
 
     file.close();
@@ -111,6 +113,7 @@ void PlayerDataManager::AddNewPlayer(const std::string& id, const std::string& n
     data.icon = 0;
     data.iconBorder = 0;
     data.tutorialDone = false;
+    data.tutorialStage = 0;
 
     players[id] = data;
     Save();

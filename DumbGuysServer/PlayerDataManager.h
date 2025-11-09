@@ -8,15 +8,16 @@ struct PlayerData
 {
     std::string id;
     std::string nickname;
-    int level;
-    int exp;
-    int coin0;
-    int coin1;
-    int rank;
-    int rankScore;
-    int icon;
-    int iconBorder;
+    int level = 1;
+    int exp = 0;
+    int coin0 = 0;
+    int coin1 = 0;
+    int rank = 0;
+    int rankScore = 0;
+    int icon = 0;
+    int iconBorder = 0;
     bool tutorialDone = false;
+    int tutorialStage = 0;
 };
 
 class PlayerDataManager
@@ -31,7 +32,6 @@ public:
     bool Exists(const std::string& id);
     void AddNewPlayer(const std::string& id, const std::string& nickname);
     PlayerData* GetByNickname(const std::string& nickname);
-
 
 private:
     std::unordered_map<std::string, PlayerData> players;

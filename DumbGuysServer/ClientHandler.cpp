@@ -5,6 +5,13 @@
 #include <cctype>
 #include <climits>
 
+// 파일 상단에 추가 (예: ClientHandler.cpp 맨 위)
+template <typename T>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi)
+{
+    return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+
 
 ClientHandler::ClientHandler(
     SOCKET clientSocket,
@@ -177,6 +184,10 @@ void ClientHandler::Run()
             if (accountMgr->ValidateLogin(id, pw))
             {
                 std::string nickname = accountMgr->GetNicknameById(id);
+
+                // 로그인 성공 → 로비 추가
+                roomMgr->AddLobbyPlayer(nickname, socket_);
+
                 response = "{";
                 response += "\"type\":\"login_result\",";
                 response += "\"result\":true,";
@@ -186,9 +197,21 @@ void ClientHandler::Run()
             }
             else
             {
-                response = R"({"type":"login_result","result":false,"msg":"invalid credentials"})";
+                response = R"({"type":"login_result","result":false,"msg":"Account already logged in or invalid credentials"})";
             }
         }
+		// --- 로그아웃 ---
+        else if (json.find("\"cmd\":\"logout\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+
+            accountMgr->SetLoggedIn(nickname, false);
+            roomMgr->RemoveLobbyPlayer(nickname);
+
+            std::cout << "[Logout] " << nickname << " logged out.\n";
+            response = R"({"type":"logout_ack","msg":"logout success"})";
+        }
+
         // --- 플레이어 정보 요청 ---
         else if (json.find("\"cmd\":\"get_player_info\"") != std::string::npos)
         {
@@ -289,8 +312,10 @@ void ClientHandler::Run()
                 {
                     response = "{";
                     response += "\"type\":\"tutorial_info\",";
+                    response += "\"result\":true,";
                     response += "\"nickname\":\"" + data->nickname + "\",";
-                    response += "\"tutorialDone\":" + std::string(data->tutorialDone ? "true" : "false");
+                    response += "\"tutorialDone\":" + std::string(data->tutorialDone ? "true" : "false") + ",";
+                    response += "\"tutorialStage\":" + std::to_string(data->tutorialStage);
                     response += "}";
                 }
                 else
@@ -298,29 +323,59 @@ void ClientHandler::Run()
                     response = R"({"type":"tutorial_info","result":false,"msg":"player not found"})";
                 }
             }
-            }
-            // --- 튜토리얼 정보 업데이트 ---
-        else if (json.find("\"cmd\":\"set_tutorial_done\"") != std::string::npos)
+        }
+        // --- 튜토리얼 정보 업데이트 ---
+        // 튜토리얼 스테이지만 저장 (세부단계는 없음)
+        else if (json.find("\"cmd\":\"set_tutorial_stage\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
+            int stage = 0;
+            findIntField(json, "tutorialStage", stage);
 
             PlayerData* data = playerDataMgr->GetByNickname(nickname);
             if (data)
             {
-                data->tutorialDone = true;
+                data->tutorialStage = stage;
                 playerDataMgr->Save();
 
-                response = R"({"type":"tutorial_update_result","result":true,"msg":"tutorial done"})";
-                std::cout << "[Tutorial] Marked tutorial done for " << nickname << std::endl;
+                std::cout << "[Tutorial] " << nickname << " stage updated to " << stage << std::endl;
+                response = R"({"type":"tutorial_update_result","result":true,"msg":"stage updated"})";
+            }
+            else
+            {
+                response = R"({"type":"tutorial_update_result","result":false,"msg":"player not found"})";
+            }
+            }
+
+        else if (json.find("\"cmd\":\"set_tutorial_done\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            int stage = 0;
+            findIntField(json, "tutorialStage", stage);
+
+            PlayerData* data = playerDataMgr->GetByNickname(nickname);
+            if (data)
+            {
+                // 완료 상태 처리
+                data->tutorialDone = true;
+                data->tutorialStage = stage;
+
+                playerDataMgr->Save();
+
+                response = "{";
+                response += "\"type\":\"tutorial_update_result\",";
+                response += "\"result\":true,";
+                response += "\"msg\":\"tutorial updated\",";
+                response += "\"tutorialStage\":" + std::to_string(data->tutorialStage);
+                response += "}";
+                std::cout << "[Tutorial] Updated tutorial info for " << nickname
+                    << " (Stage=" << data->tutorialStage << ")" << std::endl;
             }
             else
             {
                 response = R"({"type":"tutorial_update_result","result":false,"msg":"player not found"})";
             }
         }
-
-
-
         // --- 매칭 요청 ---
         else if (json.find("\"cmd\":\"request_match\"") != std::string::npos)
         {
@@ -347,6 +402,7 @@ void ClientHandler::Run()
                     player.socket = socket_;
 
                     matchMgr->AddPlayer(player);
+                    roomMgr->RemoveLobbyPlayer(nickname);
                     response = R"({"type":"match_wait","msg":"waiting for opponent"})";
                 }
             }
@@ -617,144 +673,6 @@ void ClientHandler::Run()
                 }
             }
             }
-        else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
-        {
-            std::string nickname = findStringField(json, "nickname");
-            Room* room = roomMgr->FindRoomByPlayer(nickname);
-
-            if (!room)
-            {
-                response = R"({"type":"error","msg":"room not found"})";
-            }
-            else
-            {
-                // === 점수 갱신 ===
-                if (room->player1.nickname == nickname)
-                    room->player1.score++;
-                else if (room->player2.nickname == nickname)
-                    room->player2.score++;
-
-                std::cout << "[Room #" << room->roomId << "] Score updated: "
-                    << room->player1.nickname << " "
-                    << room->player1.score << " : "
-                    << room->player2.score << " "
-                    << room->player2.nickname << std::endl;
-
-                std::string scoreMsg = "{";
-                scoreMsg += "\"type\":\"score_update\",";
-                scoreMsg += "\"player1\":\"" + room->player1.nickname + "\",";
-                scoreMsg += "\"player2\":\"" + room->player2.nickname + "\",";
-                scoreMsg += "\"score1\":" + std::to_string(room->player1.score) + ",";
-                scoreMsg += "\"score2\":" + std::to_string(room->player2.score);
-                scoreMsg += "}";
-
-                uint32_t len = (uint32_t)scoreMsg.size();
-                send(room->player1.socket, (char*)&len, 4, 0);
-                send(room->player1.socket, scoreMsg.c_str(), len, 0);
-                send(room->player2.socket, (char*)&len, 4, 0);
-                send(room->player2.socket, scoreMsg.c_str(), len, 0);
-
-                if (room->player1.score >= 2 || room->player2.score >= 2)
-                {
-                    std::string winner = (room->player1.score > room->player2.score)
-                        ? room->player1.nickname
-                        : room->player2.nickname;
-
-                    std::string endMsg = "{";
-                    endMsg += "\"type\":\"game_end\",";
-                    endMsg += "\"winner\":\"" + winner + "\"";
-                    endMsg += "}";
-
-                    uint32_t lenEnd = (uint32_t)endMsg.size();
-                    send(room->player1.socket, (char*)&lenEnd, 4, 0);
-                    send(room->player1.socket, endMsg.c_str(), lenEnd, 0);
-                    send(room->player2.socket, (char*)&lenEnd, 4, 0);
-                    send(room->player2.socket, endMsg.c_str(), lenEnd, 0);
-
-                    std::cout << "[Room #" << room->roomId << "] Game ended! Winner: " << winner << std::endl;
-
-                    room->usedMaps.clear();
-                }
-                else
-                {
-                    std::string nextRoundMsg = R"({"type":"round_end","msg":"next round"})";
-                    uint32_t len2 = (uint32_t)nextRoundMsg.size();
-                    send(room->player1.socket, (char*)&len2, 4, 0);
-                    send(room->player1.socket, nextRoundMsg.c_str(), len2, 0);
-                    send(room->player2.socket, (char*)&len2, 4, 0);
-                    send(room->player2.socket, nextRoundMsg.c_str(), len2, 0);
-                }
-            }
-            }
-
-            // === 결과 요청 ===
-        else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
-        {
-            std::string nickname = findStringField(json, "nickname");
-            Room* room = roomMgr->FindRoomByPlayer(nickname);
-
-            if (!room)
-            {
-                response = R"({"type":"error","msg":"room not found"})";
-            }
-            else
-            {
-                std::string enemy = (room->player1.nickname == nickname)
-                    ? room->player2.nickname
-                    : room->player1.nickname;
-
-                std::string winner = (room->player1.score > room->player2.score)
-                    ? room->player1.nickname
-                    : room->player2.nickname;
-
-                response = "{";
-                response += "\"type\":\"game_result\",";
-                response += "\"winner\":\"" + winner + "\",";
-                response += "\"enemy\":\"" + enemy + "\"";
-                response += "}";
-            }
-            }
-        else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
-        {
-            std::string nickname = findStringField(json, "nickname");
-            Room* room = roomMgr->FindRoomByPlayer(nickname);
-
-            if (!room)
-            {
-                response = R"({"type":"error","msg":"room not found"})";
-            }
-            else
-            {
-                std::cout << "[Room #" << room->roomId << "] " << nickname << " requested to leave.\n";
-
-                // --- 유저 제거 ---
-                if (room->player1.nickname == nickname)
-                {
-                    room->player1.nickname.clear();
-                    room->player1.socket = INVALID_SOCKET;
-                }
-                else if (room->player2.nickname == nickname)
-                {
-                    room->player2.nickname.clear();
-                    room->player2.socket = INVALID_SOCKET;
-                }
-
-                bool p1Exists = !room->player1.nickname.empty();
-                bool p2Exists = !room->player2.nickname.empty();
-
-                if (!p1Exists && !p2Exists)
-                {
-                    std::cout << "[Room #" << room->roomId << "] is now empty → deleting.\n";
-                    roomMgr->RemoveRoom(room->roomId);
-                }
-                else
-                {
-                    std::cout << "[Room #" << room->roomId << "] one player remains.\n";
-                }
-
-                response = R"({"type":"leave_room_ack","msg":"player left room"})";
-            }
-}
         else if (json.find("\"cmd\":\"attack\"") != std::string::npos)
         {
             std::string attacker = findStringField(json, "attacker");
@@ -853,7 +771,7 @@ void ClientHandler::Run()
                     response.clear(); // 클라이언트에 별도 응답 필요 없음
                 }
             }
-}
+            }
         else if (json.find("\"cmd\":\"death_anim\"") != std::string::npos)
         {
             std::string attacker = findStringField(json, "attacker");
@@ -898,6 +816,333 @@ void ClientHandler::Run()
                 }
             }
             }
+        else if (json.find("\"cmd\":\"push\"") != std::string::npos)
+        {
+            std::string attacker = findStringField(json, "attacker");
+            std::string target = findStringField(json, "target");
+
+            Room* room = roomMgr->FindRoomByPlayer(attacker);
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::cout << "[Room #" << room->roomId << "] Push from "
+                    << attacker << " → " << target << std::endl;
+
+                SOCKET targetSocket = INVALID_SOCKET;
+
+                if (room->player1.nickname == target)
+                    targetSocket = room->player1.socket;
+                else if (room->player2.nickname == target)
+                    targetSocket = room->player2.socket;
+
+                if (targetSocket != INVALID_SOCKET)
+                {
+                    // === push_hit 패킷 생성 ===
+                    std::string pushMsg = "{";
+                    pushMsg += "\"type\":\"push_hit\",";
+                    pushMsg += "\"attacker\":\"" + attacker + "\",";
+                    pushMsg += "\"target\":\"" + target + "\"";
+                    pushMsg += "}";
+
+                    uint32_t len = (uint32_t)pushMsg.size();
+                    send(targetSocket, (char*)&len, 4, 0);
+                    send(targetSocket, pushMsg.c_str(), len, 0);
+
+                    response = R"({"type":"push_ack","msg":"push sent"})";
+                    std::cout << "[Room #" << room->roomId
+                        << "] Sent push_hit to " << target << std::endl;
+                }
+                else
+                {
+                    response = R"({"type":"error","msg":"target not found in room"})";
+                }
+            }
+            }
+        else if (json.find("\"cmd\":\"chat\"") != std::string::npos)
+        {
+            std::string sender = findStringField(json, "sender");
+            std::string message = findStringField(json, "message");
+
+            Room* room = roomMgr->FindRoomByPlayer(sender);
+
+            std::string chatMsg = "{";
+            chatMsg += "\"type\":\"chat_message\",";
+            chatMsg += "\"sender\":\"" + sender + "\",";
+            chatMsg += "\"message\":\"" + message + "\"";
+            chatMsg += "}";
+
+            uint32_t len = (uint32_t)chatMsg.size();
+
+            if (room)
+            {
+                // ===== 인게임 플레이어 간 채팅 =====
+                std::cout << "[Room #" << room->roomId << "] Chat from " << sender << ": " << message << std::endl;
+
+                auto sendToClient = [&](const std::string& targetName, SOCKET sock)
+                    {
+                        if (targetName == sender)
+                            return;
+
+                        if (sock != INVALID_SOCKET)
+                        {
+                            send(sock, (char*)&len, 4, 0);
+                            send(sock, chatMsg.c_str(), len, 0);
+                        }
+                    };
+
+                sendToClient(room->player1.nickname, room->player1.socket);
+                sendToClient(room->player2.nickname, room->player2.socket);
+            }
+            else
+            {
+                std::cout << "[Lobby] Chat from " << sender << ": " << message << std::endl;
+                roomMgr->BroadcastLobby(chatMsg, sender);
+            }
+
+            response = R"({"type":"chat_ack","msg":"chat broadcasted"})";
+        }
+
+
+        else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                // === 점수 갱신 ===
+                if (room->player1.nickname == nickname)
+                    room->player1.score++;
+                else if (room->player2.nickname == nickname)
+                    room->player2.score++;
+
+                std::cout << "[Room #" << room->roomId << "] Score updated: "
+                    << room->player1.nickname << " "
+                    << room->player1.score << " : "
+                    << room->player2.score << " "
+                    << room->player2.nickname << std::endl;
+
+                std::string scoreMsg = "{";
+                scoreMsg += "\"type\":\"score_update\",";
+                scoreMsg += "\"player1\":\"" + room->player1.nickname + "\",";
+                scoreMsg += "\"player2\":\"" + room->player2.nickname + "\",";
+                scoreMsg += "\"score1\":" + std::to_string(room->player1.score) + ",";
+                scoreMsg += "\"score2\":" + std::to_string(room->player2.score);
+                scoreMsg += "}";
+
+                uint32_t len = (uint32_t)scoreMsg.size();
+                send(room->player1.socket, (char*)&len, 4, 0);
+                send(room->player1.socket, scoreMsg.c_str(), len, 0);
+                send(room->player2.socket, (char*)&len, 4, 0);
+                send(room->player2.socket, scoreMsg.c_str(), len, 0);
+
+                if (room->player1.score >= 2 || room->player2.score >= 2)
+                {
+                    std::string winner = (room->player1.score > room->player2.score)
+                        ? room->player1.nickname
+                        : room->player2.nickname;
+
+                    std::string endMsg = "{";
+                    endMsg += "\"type\":\"game_end\",";
+                    endMsg += "\"winner\":\"" + winner + "\"";
+                    endMsg += "}";
+
+                    uint32_t lenEnd = (uint32_t)endMsg.size();
+                    send(room->player1.socket, (char*)&lenEnd, 4, 0);
+                    send(room->player1.socket, endMsg.c_str(), lenEnd, 0);
+                    send(room->player2.socket, (char*)&lenEnd, 4, 0);
+                    send(room->player2.socket, endMsg.c_str(), lenEnd, 0);
+
+                    std::cout << "[Room #" << room->roomId << "] Game ended! Winner: " << winner << std::endl;
+
+                    room->usedMaps.clear();
+                }
+                else
+                {
+                    std::string nextRoundMsg = R"({"type":"round_end","msg":"next round"})";
+                    uint32_t len2 = (uint32_t)nextRoundMsg.size();
+                    send(room->player1.socket, (char*)&len2, 4, 0);
+                    send(room->player1.socket, nextRoundMsg.c_str(), len2, 0);
+                    send(room->player2.socket, (char*)&len2, 4, 0);
+                    send(room->player2.socket, nextRoundMsg.c_str(), len2, 0);
+                }
+            }
+            }
+            // === 결과 요청 ===
+        else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::string winner = (room->player1.score > room->player2.score)
+                    ? room->player1.nickname
+                    : room->player2.nickname;
+                std::string loser = (room->player1.nickname == winner)
+                    ? room->player2.nickname
+                    : room->player1.nickname;
+
+                std::string enemy = (room->player1.nickname == nickname)
+                    ? room->player2.nickname
+                    : room->player1.nickname;
+
+                PlayerData* winData = playerDataMgr->GetByNickname(winner);
+                PlayerData* loseData = playerDataMgr->GetByNickname(loser);
+
+                if (winData && loseData)
+                {
+                    // === 공통 보상 ===
+                    winData->coin0 += 10;
+                    loseData->coin0 += 10;
+
+                    // === 승자 추가 보상 ===
+                    winData->coin1 += 30;
+                    winData->exp += 50;
+                    loseData->exp += 20;
+
+                    // === 레벨업 ===
+                    auto processLevelUp = [&](PlayerData* p)
+                        {
+                            int expToLevelUp = p->level * 100;
+                            while (p->exp >= expToLevelUp)
+                            {
+                                p->exp -= expToLevelUp;
+                                p->level++;
+                                expToLevelUp = p->level * 100;
+                                std::cout << "[LevelUp] " << p->nickname << " reached Lv." << p->level << std::endl;
+                            }
+                        };
+                    processLevelUp(winData);
+                    processLevelUp(loseData);
+
+                    // === 랭크 스코어 계산 (랭크/점수 기반 가중치) ===
+                    int rankDiff = loseData->rank - winData->rank; // 승자 기준
+                    int scoreDiff = loseData->rankScore - winData->rankScore;
+                    float diffFactor = (rankDiff * 10 + scoreDiff / 10.0f) / 100.0f; // 대략적인 실력차
+
+                    // 보정: 실력차가 클수록 영향 작게, 반대로 이변이면 크게
+                    int baseGain = 30;
+                    int baseLoss = 20;
+                    int dynamicGain = (int)(baseGain * (1.0f + diffFactor * -1.2f)); // 강한 상대일수록 보상↑
+                    int dynamicLoss = (int)(baseLoss * (1.0f + diffFactor * 1.5f));  // 약한 상대에게 지면 페널티↑
+
+                    // 최소/최대 보정
+                    dynamicGain = clamp(dynamicGain, 10, 80);
+                    dynamicLoss = clamp(dynamicLoss, 5, 80);
+
+                    winData->rankScore += dynamicGain;
+                    loseData->rankScore -= dynamicLoss;
+
+                    // 0점 이하 방지
+                    if (loseData->rankScore < 0)
+                        loseData->rankScore = 0;
+
+                    // === 랭크 상승/하락 처리 ===
+                    auto processRank = [&](PlayerData* p)
+                        {
+                            const int pointsPerRank = 100;
+
+                            // 승급
+                            while (p->rankScore >= pointsPerRank && p->rank < 8)
+                            {
+                                p->rankScore -= pointsPerRank;
+                                p->rank++;
+                                std::cout << "[RankUp] " << p->nickname
+                                    << " promoted to Rank " << p->rank << std::endl;
+                            }
+
+                            // 최고 랭크는 점수 누적만
+                            if (p->rank >= 8 && p->rankScore > pointsPerRank * 10)
+                                p->rankScore = pointsPerRank * 10;
+
+                            // 강등
+                            while (p->rankScore < 0 && p->rank > 0)
+                            {
+                                p->rank--;
+                                p->rankScore += pointsPerRank;
+                                std::cout << "[RankDown] " << p->nickname
+                                    << " demoted to Rank " << p->rank << std::endl;
+                            }
+
+                            // 경계값
+                            if (p->rank < 0) p->rank = 0;
+                            if (p->rank > 8) p->rank = 8;
+                        };
+
+                    processRank(winData);
+                    processRank(loseData);
+
+                    playerDataMgr->Save();
+
+                    std::cout << "[GameResult] Winner: " << winner
+                        << ", Loser: " << loser
+                        << " | Gain: +" << dynamicGain
+                        << ", Loss: -" << dynamicLoss
+                        << std::endl;
+                }
+
+                response = "{";
+                response += "\"type\":\"game_result\",";
+                response += "\"winner\":\"" + winner + "\",";
+                response += "\"enemy\":\"" + enemy + "\"";
+                response += "}";
+            }
+            }
+
+        else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::cout << "[Room #" << room->roomId << "] " << nickname << " requested to leave.\n";
+
+                // --- 유저 제거 ---
+                if (room->player1.nickname == nickname)
+                {
+                    room->player1.nickname.clear();
+                    room->player1.socket = INVALID_SOCKET;
+                }
+                else if (room->player2.nickname == nickname)
+                {
+                    room->player2.nickname.clear();
+                    room->player2.socket = INVALID_SOCKET;
+                }
+
+                bool p1Exists = !room->player1.nickname.empty();
+                bool p2Exists = !room->player2.nickname.empty();
+
+                if (!p1Exists && !p2Exists)
+                {
+                    std::cout << "[Room #" << room->roomId << "] is now empty → deleting.\n";
+                    roomMgr->RemoveRoom(room->roomId);
+                }
+                else
+                {
+                    std::cout << "[Room #" << room->roomId << "] one player remains.\n";
+                }
+                roomMgr->AddLobbyPlayer(nickname, socket_);
+                response = R"({"type":"leave_room_ack","msg":"player left room"})";
+            }
+}
+        
 
 
         // --- 알 수 없는 명령 ---

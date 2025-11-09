@@ -79,10 +79,41 @@ bool UserAccountManager::NicknameExists(const std::string& nickname)
     return false;
 }
 
+//bool UserAccountManager::ValidateLogin(const std::string& id, const std::string& pw)
+//{
+//    auto it = accounts.find(id);
+//    return (it != accounts.end() && it->second.first == pw);
+//}
+
 bool UserAccountManager::ValidateLogin(const std::string& id, const std::string& pw)
 {
     auto it = accounts.find(id);
-    return (it != accounts.end() && it->second.first == pw);
+    if (it == accounts.end()) return false;
+    if (it->second.first != pw) return false;
+
+    const std::string& nickname = it->second.second;
+    if (loggedInUsers.find(nickname) != loggedInUsers.end())
+    {
+        std::cout << "[Login] Duplicate login detected for: " << nickname << std::endl;
+        return false; // 이미 로그인 중
+    }
+
+    loggedInUsers.insert(nickname);
+    return true;
+}
+
+
+bool UserAccountManager::IsLoggedIn(const std::string& nickname)
+{
+    return loggedInUsers.find(nickname) != loggedInUsers.end();
+}
+
+void UserAccountManager::SetLoggedIn(const std::string& nickname, bool state)
+{
+    if (state)
+        loggedInUsers.insert(nickname);
+    else
+        loggedInUsers.erase(nickname);
 }
 
 bool UserAccountManager::AddAccount(const std::string& id, const std::string& pw, const std::string& nickname)

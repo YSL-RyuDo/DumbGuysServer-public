@@ -72,3 +72,40 @@ void RoomManager::RemoveRoom(int roomId)
         std::cout << "[RoomManager] Room #" << roomId << " deleted.\n";
     }
 }
+
+void RoomManager::AddLobbyPlayer(const std::string& nickname, SOCKET sock)
+{
+    if (nickname.empty()) return;
+    lobbyPlayers[nickname] = sock;
+    std::cout << "[Lobby] " << nickname << " joined the lobby." << std::endl;
+}
+
+void RoomManager::RemoveLobbyPlayer(const std::string& nickname)
+{
+    auto it = lobbyPlayers.find(nickname);
+    if (it != lobbyPlayers.end())
+    {
+        std::cout << "[Lobby] " << nickname << " left the lobby." << std::endl;
+        lobbyPlayers.erase(it);
+    }
+}
+
+void RoomManager::BroadcastLobby(const std::string& msg, const std::string& excludeNickname)
+{
+    uint32_t len = (uint32_t)msg.size();
+    for (auto it = lobbyPlayers.begin(); it != lobbyPlayers.end(); ++it)
+    {
+        const std::string& nickname = it->first;
+        SOCKET sock = it->second;
+
+        // 자기 자신(excludeNickname)은 제외
+        if (nickname == excludeNickname)
+            continue;
+
+        if (sock != INVALID_SOCKET)
+        {
+            send(sock, (char*)&len, 4, 0);
+            send(sock, msg.c_str(), len, 0);
+        }
+    }
+}

@@ -12,7 +12,7 @@ int main()
         return 1;
     }
 
-    Server server(7777);
+    Server server(9000);
     server.Run();
 
     WSACleanup();
