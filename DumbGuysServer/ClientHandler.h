@@ -10,6 +10,9 @@
 #include "OwnedItemManager.h"
 #include "RoomManager.h"
 #include "MatchManager.h"
+#include "StoreManager.h"
+
+extern StoreManager* storeMgr;
 
 class ClientHandler
 {

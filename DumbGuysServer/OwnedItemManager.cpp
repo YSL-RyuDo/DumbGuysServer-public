@@ -115,3 +115,41 @@ void OwnedItemManager::AddOwnedItem(const std::string& id, const std::string& ca
 
     std::cout << "[OwnedItemManager] Item unlocked: " << category << " index " << index << " for " << id << "\n";
 }
+
+std::vector<int> OwnedItemManager::GetOwnedList(const std::string& id, const std::string& category)
+{
+    std::vector<int> result;
+
+    std::string filename = "owned_" + category + ".csv";
+    std::ifstream file(filename);
+
+    if (!file.is_open())
+    {
+        std::cerr << "[OwnedItemManager] File not found: " << filename << "\n";
+        return result;
+    }
+
+    std::string line;
+    std::getline(file, line); // header skip
+
+    while (std::getline(file, line))
+    {
+        std::stringstream ss(line);
+        std::string token;
+
+        // 첫 번째 값(id)
+        std::getline(ss, token, ',');
+        if (token != id)
+            continue;
+
+        // 나머지 값을 읽음
+        while (std::getline(ss, token, ','))
+        {
+            result.push_back(std::stoi(token));
+        }
+        break;
+    }
+
+    file.close();
+    return result;
+}

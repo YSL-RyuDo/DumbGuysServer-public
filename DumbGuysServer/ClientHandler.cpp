@@ -376,6 +376,10 @@ void ClientHandler::Run()
                 response = R"({"type":"tutorial_update_result","result":false,"msg":"player not found"})";
             }
         }
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
         // --- 매칭 요청 ---
         else if (json.find("\"cmd\":\"request_match\"") != std::string::npos)
         {
@@ -673,6 +677,147 @@ void ClientHandler::Run()
                 }
             }
             }
+<<<<<<< Updated upstream
+=======
+        else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                // === 점수 갱신 ===
+                if (room->player1.nickname == nickname)
+                    room->player1.score++;
+                else if (room->player2.nickname == nickname)
+                    room->player2.score++;
+
+                std::cout << "[Room #" << room->roomId << "] Score updated: "
+                    << room->player1.nickname << " "
+                    << room->player1.score << " : "
+                    << room->player2.score << " "
+                    << room->player2.nickname << std::endl;
+
+                std::string scoreMsg = "{";
+                scoreMsg += "\"type\":\"score_update\",";
+                scoreMsg += "\"player1\":\"" + room->player1.nickname + "\",";
+                scoreMsg += "\"player2\":\"" + room->player2.nickname + "\",";
+                scoreMsg += "\"score1\":" + std::to_string(room->player1.score) + ",";
+                scoreMsg += "\"score2\":" + std::to_string(room->player2.score);
+                scoreMsg += "}";
+
+                uint32_t len = (uint32_t)scoreMsg.size();
+                send(room->player1.socket, (char*)&len, 4, 0);
+                send(room->player1.socket, scoreMsg.c_str(), len, 0);
+                send(room->player2.socket, (char*)&len, 4, 0);
+                send(room->player2.socket, scoreMsg.c_str(), len, 0);
+
+                if (room->player1.score >= 2 || room->player2.score >= 2)
+                {
+                    std::string winner = (room->player1.score > room->player2.score)
+                        ? room->player1.nickname
+                        : room->player2.nickname;
+
+                    std::string endMsg = "{";
+                    endMsg += "\"type\":\"game_end\",";
+                    endMsg += "\"winner\":\"" + winner + "\"";
+                    endMsg += "}";
+
+                    uint32_t lenEnd = (uint32_t)endMsg.size();
+                    send(room->player1.socket, (char*)&lenEnd, 4, 0);
+                    send(room->player1.socket, endMsg.c_str(), lenEnd, 0);
+                    send(room->player2.socket, (char*)&lenEnd, 4, 0);
+                    send(room->player2.socket, endMsg.c_str(), lenEnd, 0);
+
+                    std::cout << "[Room #" << room->roomId << "] Game ended! Winner: " << winner << std::endl;
+
+                    room->usedMaps.clear();
+                }
+                else
+                {
+                    std::string nextRoundMsg = R"({"type":"round_end","msg":"next round"})";
+                    uint32_t len2 = (uint32_t)nextRoundMsg.size();
+                    send(room->player1.socket, (char*)&len2, 4, 0);
+                    send(room->player1.socket, nextRoundMsg.c_str(), len2, 0);
+                    send(room->player2.socket, (char*)&len2, 4, 0);
+                    send(room->player2.socket, nextRoundMsg.c_str(), len2, 0);
+                }
+            }
+            }
+
+        // === 결과 요청 ===
+        else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::string enemy = (room->player1.nickname == nickname)
+                    ? room->player2.nickname
+                    : room->player1.nickname;
+
+                std::string winner = (room->player1.score > room->player2.score)
+                    ? room->player1.nickname
+                    : room->player2.nickname;
+
+                response = "{";
+                response += "\"type\":\"game_result\",";
+                response += "\"winner\":\"" + winner + "\",";
+                response += "\"enemy\":\"" + enemy + "\"";
+                response += "}";
+            }
+            }
+        else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                response = R"({"type":"error","msg":"room not found"})";
+            }
+            else
+            {
+                std::cout << "[Room #" << room->roomId << "] " << nickname << " requested to leave.\n";
+
+                // --- 유저 제거 ---
+                if (room->player1.nickname == nickname)
+                {
+                    room->player1.nickname.clear();
+                    room->player1.socket = INVALID_SOCKET;
+                }
+                else if (room->player2.nickname == nickname)
+                {
+                    room->player2.nickname.clear();
+                    room->player2.socket = INVALID_SOCKET;
+                }
+
+                bool p1Exists = !room->player1.nickname.empty();
+                bool p2Exists = !room->player2.nickname.empty();
+
+                if (!p1Exists && !p2Exists)
+                {
+                    std::cout << "[Room #" << room->roomId << "] is now empty → deleting.\n";
+                    roomMgr->RemoveRoom(room->roomId);
+                }
+                else
+                {
+                    std::cout << "[Room #" << room->roomId << "] one player remains.\n";
+                }
+
+                response = R"({"type":"leave_room_ack","msg":"player left room"})";
+            }
+}
+>>>>>>> Stashed changes
         else if (json.find("\"cmd\":\"attack\"") != std::string::npos)
         {
             std::string attacker = findStringField(json, "attacker");
@@ -1143,6 +1288,189 @@ void ClientHandler::Run()
             }
 }
         
+
+        // --- 코인 정보 요청 ---
+        else if (json.find("\"cmd\":\"get_coin_info\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+
+            if (nickname.empty())
+            {
+                response = R"({"type":"coin_info","result":false,"msg":"missing nickname"})";
+            }
+            else
+            {
+                PlayerData* data = playerDataMgr->GetByNickname(nickname);
+
+                if (data)
+                {
+                    response = "{";
+                    response += "\"type\":\"coin_info\",";
+                    response += "\"nickname\":\"" + data->nickname + "\",";
+                    response += "\"coin0\":" + std::to_string(data->coin0) + ",";
+                    response += "\"coin1\":" + std::to_string(data->coin1);
+                    response += "}";
+                }
+                else
+                {
+                    response = R"({"type":"coin_info","result":false,"msg":"player not found"})";
+                }
+            }
+            }
+        else if (json.find("\"cmd\":\"get_store_items\"") != std::string::npos)
+        {
+            std::string category = findStringField(json, "category");
+            std::cout << "[Store] Received get_store_items for category: " << category << std::endl;
+
+            // CSV 읽기
+            std::vector<StoreItem> items = storeMgr->LoadStoreCategory(category);
+
+            // JSON 변환
+            std::string response = "{";
+            response += "\"type\":\"store_items\",";
+            response += "\"category\":\"" + category + "\",";
+            response += "\"items\":[";
+
+            for (size_t i = 0; i < items.size(); i++)
+            {
+                response += "{";
+                response += "\"id\":" + std::to_string(items[i].id) + ",";
+                response += "\"name\":\"" + items[i].name + "\",";
+                response += "\"price\":" + std::to_string(items[i].price);
+                response += "}";
+
+                if (i < items.size() - 1)
+                    response += ",";
+            }
+
+            response += "]}";
+
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
+
+            continue;
+            }
+        else if (json.find("\"cmd\":\"get_owned_items\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            std::string category = findStringField(json, "category");
+
+            std::cout << "[Store] get_owned_items request: " << nickname
+                << " / category: " << category << std::endl;
+
+            // 닉네임 → ID 얻기
+            std::string id = accountMgr->GetIdByNickname(nickname);
+            if (id.empty())
+            {
+                std::string response = R"({"type":"owned_items","result":false,"msg":"player not found"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // CSV 읽기 (OwnedItemManager 기능)
+            std::vector<int> owned = ownedItemMgr->GetOwnedList(id, category);
+
+            if (owned.empty())
+            {
+                std::string response = R"({"type":"owned_items","result":false,"msg":"read failed"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // JSON 생성
+            std::string response = "{";
+            response += "\"type\":\"owned_items\",";
+            response += "\"category\":\"" + category + "\",";
+            response += "\"owned\":[";
+
+            for (size_t i = 0; i < owned.size(); i++)
+            {
+                response += std::to_string(owned[i]);
+                if (i < owned.size() - 1)
+                    response += ",";
+            }
+
+            response += "]}";
+
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
+
+            std::cout << "[Store] Sent owned_items for " << nickname
+                << " / " << category << std::endl;
+
+            continue;
+            }
+        else if (json.find("\"cmd\":\"buy_item\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            std::string category = findStringField(json, "category");
+            int id = -1;
+            findIntField(json, "id", id);
+
+            std::string accId = accountMgr->GetIdByNickname(nickname);
+            if (accId.empty())
+            {
+                std::string response = R"({"type":"buy_item_result","result":false,"msg":"player not found"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // CSV에서 해당 아이템의 가격 얻기
+            StoreItem item = storeMgr->GetItem(category, id);
+
+            // 플레이어 정보
+            PlayerData* data = playerDataMgr->GetByNickname(nickname);
+            if (!data)
+            {
+                std::string response = R"({"type":"buy_item_result","result":false,"msg":"player not found"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // 코인 부족 체크
+            if (data->coin1 < item.price)
+            {
+                std::string response = R"({"type":"buy_item_result","result":false,"msg":"not enough coin"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // 구매 처리 : 코인 차감 + CSV 수정
+            data->coin1 -= item.price;
+            playerDataMgr->Save();
+
+            ownedItemMgr->AddOwnedItem(accId, category, id); // CSV 저장
+
+            // 응답 전송
+            std::string response = "{";
+            response += "\"type\":\"buy_item_result\",";
+            response += "\"result\":true,";
+            response += "\"category\":\"" + category + "\",";
+            response += "\"id\":" + std::to_string(id) + ",";
+            response += "\"coin1\":" + std::to_string(data->coin1);
+            response += "}";
+
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
+
+            std::cout << "[Store] Item purchased: " << nickname << " → "
+                << category << id << std::endl;
+
+            continue;
+            }
 
 
         // --- 알 수 없는 명령 ---

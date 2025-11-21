@@ -30,4 +30,7 @@ public:
 
     // æ∆¿Ã≈€ »πµÊ √≥∏Æ
     void AddOwnedItem(const std::string& id, const std::string& category, int index);
+
+    std::vector<int> GetOwnedList(const std::string& id, const std::string& category);
+
 };
