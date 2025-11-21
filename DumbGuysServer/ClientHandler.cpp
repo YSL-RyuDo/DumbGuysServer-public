@@ -376,10 +376,7 @@ void ClientHandler::Run()
                 response = R"({"type":"tutorial_update_result","result":false,"msg":"player not found"})";
             }
         }
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
         // --- ¸ÅÄª ¿äÃ» ---
         else if (json.find("\"cmd\":\"request_match\"") != std::string::npos)
         {
@@ -677,8 +674,6 @@ void ClientHandler::Run()
                 }
             }
             }
-<<<<<<< Updated upstream
-=======
         else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -817,7 +812,6 @@ void ClientHandler::Run()
                 response = R"({"type":"leave_room_ack","msg":"player left room"})";
             }
 }
->>>>>>> Stashed changes
         else if (json.find("\"cmd\":\"attack\"") != std::string::npos)
         {
             std::string attacker = findStringField(json, "attacker");

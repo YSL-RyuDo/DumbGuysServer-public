@@ -12,13 +12,10 @@ int main()
         printf("WSAStartup failed.\n");
         return 1;
     }
-<<<<<<< Updated upstream
 
     Server server(9000);
-=======
     storeMgr = new StoreManager();
-    Server server(7777);
->>>>>>> Stashed changes
+    //Server server(7777);
     server.Run();
 
     WSACleanup();
