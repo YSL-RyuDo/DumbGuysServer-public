@@ -33,4 +33,5 @@ public:
 
     std::vector<int> GetOwnedList(const std::string& id, const std::string& category);
 
+    bool HasOwnedItem(const std::string& id, const std::string& category, int index);
 };

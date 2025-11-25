@@ -1043,8 +1043,6 @@ void ClientHandler::Run()
 
             response = R"({"type":"chat_ack","msg":"chat broadcasted"})";
         }
-
-
         else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -1114,7 +1112,6 @@ void ClientHandler::Run()
                 }
             }
             }
-            // === 결과 요청 ===
         else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -1280,7 +1277,7 @@ void ClientHandler::Run()
                 roomMgr->AddLobbyPlayer(nickname, socket_);
                 response = R"({"type":"leave_room_ack","msg":"player left room"})";
             }
-}
+        }
         
 
         // --- 코인 정보 요청 ---
@@ -1464,8 +1461,86 @@ void ClientHandler::Run()
                 << category << id << std::endl;
 
             continue;
+        }
+        else if (json.find("\"cmd\":\"gacha\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+
+            std::cout << "[Gacha] Request from " << nickname << "\n";
+
+            // --- 1. PlayerData 가져오기 ---
+            PlayerData* data = playerDataMgr->GetByNickname(nickname);
+            if (!data)
+            {
+                std::string response = R"({"type":"gacha_result","result":false,"msg":"player not found"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
             }
 
+            // --- 2. 가챠 비용 확인 ---
+            const int GACHA_COST = 1000;
+
+            if (data->coin0 < GACHA_COST)
+            {
+                std::string response = R"({"type":"gacha_result","result":false,"msg":"not enough coin0"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                std::cout << "[Gacha] Not enough coin0\n";
+                continue;
+            }
+
+            // --- 3. coin0 차감 ---
+            data->coin0 -= GACHA_COST;
+            playerDataMgr->Save();
+
+            // --- 4. 랜덤 카테고리 ---
+            std::vector<std::string> categories = {
+                "Accessories", "Faces", "FullBody", "Glasses",
+                "Gloves", "Hairstyle", "Hat", "Outerwear", "Pants", "Shoes"
+            };
+            int randCat = rand() % categories.size();
+            std::string category = categories[randCat];
+
+            // --- 5. 카테고리 아이템 로드 ---
+            std::vector<StoreItem> items = storeMgr->LoadStoreCategory(category);
+            if (items.empty())
+            {
+                std::cout << "[Gacha] Category empty: " << category << "\n";
+                continue;
+            }
+
+            // --- 6. 랜덤 아이템 ---
+            int idx = rand() % items.size();
+            StoreItem picked = items[idx];
+
+            // --- 7. Owned 저장 ---
+            // AccountId 필요 → PlayerData는 nickname 보유
+            // AccountManager 에서 id 찾기
+            std::string accId = accountMgr->GetIdByNickname(nickname);
+
+            if (!accId.empty())
+                ownedItemMgr->AddOwnedItem(accId, category, picked.id);
+
+            // --- 8. 응답 ---
+            std::string response = "{";
+            response += "\"type\":\"gacha_result\",";
+            response += "\"result\":true,";
+            response += "\"category\":\"" + category + "\",";
+            response += "\"id\":" + std::to_string(picked.id) + ",";
+            response += "\"coin0\":" + std::to_string(data->coin0);
+            response += "}";
+
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
+
+            std::cout << "[Gacha] SUCCESS → " << category << picked.id << "\n";
+
+            continue;
+            }
 
         // --- 알 수 없는 명령 ---
         else
