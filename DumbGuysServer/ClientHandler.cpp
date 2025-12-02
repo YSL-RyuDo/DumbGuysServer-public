@@ -452,6 +452,35 @@ void ClientHandler::Run()
                 }
             }
         }
+        else if (json.find("\"cmd\":\"match_cancel\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+
+            if (nickname.empty())
+            {
+                std::string response = R"({"type":"error","msg":"missing nickname"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            std::cout << "[Match] Cancel request from " << nickname << "\n";
+
+            // 1) 매칭 큐에서 제거
+            matchMgr->RemovePlayer(nickname);
+
+            // 2) 로비 플레이어로 다시 등록
+            roomMgr->AddLobbyPlayer(nickname, socket_);
+
+            // 3) 응답 보내기
+            std::string response = R"({"type":"match_cancel_ack","msg":"match canceled"})";
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
+
+            continue;
+            }
 
         else if (json.find("\"cmd\":\"map_choose_start_request\"") != std::string::npos)
         {
@@ -511,8 +540,7 @@ void ClientHandler::Run()
 
                 std::cout << "[Room #" << room->roomId << "] Sent map_choose_start to both players (map index reset, used maps sent).\n";
             }
-            }
-
+        }
         else if (json.find("\"cmd\":\"select_map\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -577,8 +605,7 @@ void ClientHandler::Run()
                     }
                 }
             }
-            }
-
+        }
         else if (json.find("\"cmd\":\"get_spawn_info\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -745,7 +772,7 @@ void ClientHandler::Run()
             }
 
         // === 결과 요청 ===
-        else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
+        /*else if (json.find("\"cmd\":\"get_game_result\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
             Room* room = roomMgr->FindRoomByPlayer(nickname);
@@ -770,48 +797,48 @@ void ClientHandler::Run()
                 response += "\"enemy\":\"" + enemy + "\"";
                 response += "}";
             }
-            }
-        else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
-        {
-            std::string nickname = findStringField(json, "nickname");
-            Room* room = roomMgr->FindRoomByPlayer(nickname);
-
-            if (!room)
-            {
-                response = R"({"type":"error","msg":"room not found"})";
-            }
-            else
-            {
-                std::cout << "[Room #" << room->roomId << "] " << nickname << " requested to leave.\n";
-
-                // --- 유저 제거 ---
-                if (room->player1.nickname == nickname)
-                {
-                    room->player1.nickname.clear();
-                    room->player1.socket = INVALID_SOCKET;
-                }
-                else if (room->player2.nickname == nickname)
-                {
-                    room->player2.nickname.clear();
-                    room->player2.socket = INVALID_SOCKET;
-                }
-
-                bool p1Exists = !room->player1.nickname.empty();
-                bool p2Exists = !room->player2.nickname.empty();
-
-                if (!p1Exists && !p2Exists)
-                {
-                    std::cout << "[Room #" << room->roomId << "] is now empty → deleting.\n";
-                    roomMgr->RemoveRoom(room->roomId);
-                }
-                else
-                {
-                    std::cout << "[Room #" << room->roomId << "] one player remains.\n";
-                }
-
-                response = R"({"type":"leave_room_ack","msg":"player left room"})";
-            }
-}
+            }*/
+//        else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
+//        {
+//            std::string nickname = findStringField(json, "nickname");
+//            Room* room = roomMgr->FindRoomByPlayer(nickname);
+//
+//            if (!room)
+//            {
+//                response = R"({"type":"error","msg":"room not found"})";
+//            }
+//            else
+//            {
+//                std::cout << "[Room #" << room->roomId << "] " << nickname << " requested to leave.\n";
+//
+//                // --- 유저 제거 ---
+//                if (room->player1.nickname == nickname)
+//                {
+//                    room->player1.nickname.clear();
+//                    room->player1.socket = INVALID_SOCKET;
+//                }
+//                else if (room->player2.nickname == nickname)
+//                {
+//                    room->player2.nickname.clear();
+//                    room->player2.socket = INVALID_SOCKET;
+//                }
+//
+//                bool p1Exists = !room->player1.nickname.empty();
+//                bool p2Exists = !room->player2.nickname.empty();
+//
+//                if (!p1Exists && !p2Exists)
+//                {
+//                    std::cout << "[Room #" << room->roomId << "] is now empty → deleting.\n";
+//                    roomMgr->RemoveRoom(room->roomId);
+//                }
+//                else
+//                {
+//                    std::cout << "[Room #" << room->roomId << "] one player remains.\n";
+//                }
+//
+//                response = R"({"type":"leave_room_ack","msg":"player left room"})";
+//            }
+//}
         else if (json.find("\"cmd\":\"attack\"") != std::string::npos)
         {
             std::string attacker = findStringField(json, "attacker");
@@ -1236,7 +1263,6 @@ void ClientHandler::Run()
                 response += "}";
             }
             }
-
         else if (json.find("\"cmd\":\"leave_room\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -1538,6 +1564,70 @@ void ClientHandler::Run()
             sendFull(response.data(), len);
 
             std::cout << "[Gacha] SUCCESS → " << category << picked.id << "\n";
+
+            continue;
+            }
+        else if (json.find("\"cmd\":\"change_appearance\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            std::string category = findStringField(json, "category");
+            int id = -1;
+            findIntField(json, "id", id);
+
+            std::string accId = accountMgr->GetIdByNickname(nickname);
+            if (accId.empty())
+            {
+                std::string response = R"({"type":"appearance_update","result":false,"msg":"player not found"})";
+                uint32_t len = response.size();
+                sendFull(&len, 4);
+                sendFull(response.data(), len);
+                continue;
+            }
+
+            // 1) appearanceMap 내부 데이터 얻기
+            AppearanceData* data = appearanceMgr->GetAppearance(accId);
+
+            // 1-2) 없으면 새로 생성
+            if (!data)
+            {
+                appearanceMgr->AddNewAppearance(accId);
+                data = appearanceMgr->GetAppearance(accId);
+            }
+
+            // 2) 해당 카테고리만 수정
+            if (category == "FullBody") data->FullBody = id;
+            else if (category == "Hat") data->Hat = id;
+            else if (category == "Accessories") data->Accessories = id;
+            else if (category == "Faces") data->Faces = id;
+            else if (category == "Glasses") data->Glasses = id;
+            else if (category == "Gloves") data->Gloves = id;
+            else if (category == "Hairstyle") data->Hairstyle = id;
+            else if (category == "Outerwear") data->Outerwear = id;
+            else if (category == "Pants") data->Pants = id;
+            else if (category == "Shoes") data->Shoes = id;
+
+            // 3) 전체 저장 (파일 rewrite)
+            appearanceMgr->Save();
+
+            // 4) 응답 생성
+            std::string response = "{";
+            response += "\"type\":\"appearance_update\",";
+            response += "\"result\":true,";
+            response += "\"FullBody\":" + std::to_string(data->FullBody) + ",";
+            response += "\"Hat\":" + std::to_string(data->Hat) + ",";
+            response += "\"Accessories\":" + std::to_string(data->Accessories) + ",";
+            response += "\"Faces\":" + std::to_string(data->Faces) + ",";
+            response += "\"Glasses\":" + std::to_string(data->Glasses) + ",";
+            response += "\"Gloves\":" + std::to_string(data->Gloves) + ",";
+            response += "\"Hairstyle\":" + std::to_string(data->Hairstyle) + ",";
+            response += "\"Outerwear\":" + std::to_string(data->Outerwear) + ",";
+            response += "\"Pants\":" + std::to_string(data->Pants) + ",";
+            response += "\"Shoes\":" + std::to_string(data->Shoes);
+            response += "}";
+
+            uint32_t len = response.size();
+            sendFull(&len, 4);
+            sendFull(response.data(), len);
 
             continue;
             }

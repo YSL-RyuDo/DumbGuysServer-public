@@ -110,3 +110,18 @@ void MatchManager::CheckMatch()
         }
     }
 }
+
+void MatchManager::RemovePlayer(const std::string& nickname)
+{
+    for (auto it = waitingPlayers.begin(); it != waitingPlayers.end(); ++it)
+    {
+        if (it->nickname == nickname)
+        {
+            waitingPlayers.erase(it);
+            std::cout << "[Match] Player removed from queue: " << nickname << "\n";
+            return;
+        }
+    }
+
+    std::cout << "[Match] Player not found in queue: " << nickname << "\n";
+}

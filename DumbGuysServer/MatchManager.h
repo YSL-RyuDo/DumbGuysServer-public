@@ -26,8 +26,11 @@ private:
 public:
     MatchManager(RoomManager* roomMgr);
     void AddPlayer(const MatchPlayer& player);
+    void RemovePlayer(const std::string& nickname);
 
 private:
     void CheckMatch();
     bool IsMatchable(const MatchPlayer& a, const MatchPlayer& b);
+    
+
 };
