@@ -7,7 +7,7 @@
 
 struct AppearanceData
 {
-    std::string id; // user id
+    std::string id;
     int FullBody;
     int Hat;
     int Accessories;

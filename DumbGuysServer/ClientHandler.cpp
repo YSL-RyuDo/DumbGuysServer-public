@@ -147,7 +147,7 @@ void ClientHandler::Run()
 
         std::string response;
 
-        // --- 회원가입 ---
+        // 회원가입
         if (json.find("\"cmd\":\"signup\"") != std::string::npos)
         {
             std::string id = findStringField(json, "id");
@@ -175,7 +175,7 @@ void ClientHandler::Run()
                 response = R"({"type":"signup_result","result":true,"msg":"signup ok"})";
             }
         }
-        // --- 로그인 ---
+        // 로그인
         else if (json.find("\"cmd\":\"login\"") != std::string::npos)
         {
             std::string id = findStringField(json, "id");
@@ -212,7 +212,7 @@ void ClientHandler::Run()
             response = R"({"type":"logout_ack","msg":"logout success"})";
         }
 
-        // --- 플레이어 정보 요청 ---
+        // 플레이어 정보 요청
         else if (json.find("\"cmd\":\"get_player_info\"") != std::string::npos)
         {
             std::string nick = findStringField(json, "nickname");
@@ -244,7 +244,7 @@ void ClientHandler::Run()
                 }
             }
         }
-        // --- 외형 정보 요청 ---
+        // 외형 정보 요청
         else if (json.find("\"cmd\":\"get_appearance_info\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -297,7 +297,7 @@ void ClientHandler::Run()
             else
                 response = R"({"type":"enemy_info","result":false,"msg":"enemy not found"})";
                 }
-        // --- 튜토리얼 정보 요청 ---
+        // 튜토리얼 정보 요청
         else if (json.find("\"cmd\":\"get_tutorial_info\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -324,8 +324,7 @@ void ClientHandler::Run()
                 }
             }
         }
-        // --- 튜토리얼 정보 업데이트 ---
-        // 튜토리얼 스테이지만 저장 (세부단계는 없음)
+        // 튜토리얼 정보 업데이트
         else if (json.find("\"cmd\":\"set_tutorial_stage\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
