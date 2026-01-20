@@ -183,16 +183,20 @@ void ClientHandler::Run()
 
             if (accountMgr->ValidateLogin(id, pw))
             {
-                std::string nickname = accountMgr->GetNicknameById(id);
+                this->accountId = id;
+                this->nickname = accountMgr->GetNicknameById(id);
 
                 // 로그인 성공 → 로비 추가
-                roomMgr->AddLobbyPlayer(nickname, socket_);
+                roomMgr->AddLobbyPlayer(this->nickname, socket_);
 
-                response = "{";
+                response.clear();
+                response.reserve(128);
+
+                response += "{";
                 response += "\"type\":\"login_result\",";
                 response += "\"result\":true,";
                 response += "\"msg\":\"login ok\",";
-                response += "\"nickname\":\"" + nickname + "\"";
+                response += "\"nickname\":\"" + this->nickname + "\"";
                 response += "}";
             }
             else
@@ -200,6 +204,7 @@ void ClientHandler::Run()
                 response = R"({"type":"login_result","result":false,"msg":"Account already logged in or invalid credentials"})";
             }
         }
+
 		// --- 로그아웃 ---
         else if (json.find("\"cmd\":\"logout\"") != std::string::npos)
         {
@@ -271,6 +276,39 @@ void ClientHandler::Run()
             else
                 response = R"({"type":"appearance_info","result":false,"msg":"not found"})";
         }
+        //else if (json.find("\"cmd\":\"get_appearance_info\"") != std::string::npos)
+        //{
+        //    if (accountId.empty())
+        //    {
+        //        response = R"({"type":"appearance_info","result":false,"msg":"not logged in"})";
+        //        return;
+        //    }
+
+        //    AppearanceData* app = appearanceMgr->GetAppearance(accountId);
+        //    if (!app)
+        //    {
+        //        response = R"({"type":"appearance_info","result":false,"msg":"not found"})";
+        //        return;
+        //    }
+
+        //    response.clear();
+        //    response.reserve(256);
+
+        //    response += "{";
+        //    response += "\"type\":\"appearance_info\",";
+        //    response += "\"nickname\":\"" + nickname + "\","; // 세션에 저장된 nickname
+        //    response += "\"FullBody\":" + std::to_string(app->FullBody) + ",";
+        //    response += "\"Hat\":" + std::to_string(app->Hat) + ",";
+        //    response += "\"Accessories\":" + std::to_string(app->Accessories) + ",";
+        //    response += "\"Faces\":" + std::to_string(app->Faces) + ",";
+        //    response += "\"Glasses\":" + std::to_string(app->Glasses) + ",";
+        //    response += "\"Gloves\":" + std::to_string(app->Gloves) + ",";
+        //    response += "\"Hairstyle\":" + std::to_string(app->Hairstyle) + ",";
+        //    response += "\"Outerwear\":" + std::to_string(app->Outerwear) + ",";
+        //    response += "\"Pants\":" + std::to_string(app->Pants) + ",";
+        //    response += "\"Shoes\":" + std::to_string(app->Shoes);
+        //    response += "}";
+        //    }
         else if (json.find("\"cmd\":\"get_enemy_info\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -657,49 +695,88 @@ void ClientHandler::Run()
             if (!room)
             {
                 response = R"({"type":"error","msg":"room not found"})";
+                return;
+            }
+
+            float px, py, pz, rx, ry, rz;
+            if (!findFloatField(json, "px", px) ||
+                !findFloatField(json, "py", py) ||
+                !findFloatField(json, "pz", pz) ||
+                !findFloatField(json, "rx", rx) ||
+                !findFloatField(json, "ry", ry) ||
+                !findFloatField(json, "rz", rz))
+            {
+                response = R"({"type":"error","msg":"invalid float field"})";
+                std::cout << "[Error] Invalid float in player_move from " << nickname << std::endl;
+                return;
+            }
+
+            RoomPlayer* sender = nullptr;
+            RoomPlayer* receiver = nullptr;
+
+            if (room->player1.nickname == nickname)
+            {
+                sender = &room->player1;
+                receiver = &room->player2;
+            }
+            else if (room->player2.nickname == nickname)
+            {
+                sender = &room->player2;
+                receiver = &room->player1;
+            }
+
+            if (!sender || receiver->socket == INVALID_SOCKET)
+                return;
+
+            // ===== 서버 필터링 시작 =====
+
+            auto& last = sender->lastMove; // LastMoveState
+            auto now = std::chrono::steady_clock::now();
+
+            if (!last.initialized)
+            {
+                last.px = px; last.py = py; last.pz = pz;
+                last.rx = rx; last.ry = ry; last.rz = rz;
+                last.lastSendTime = now;
+                last.initialized = true;
             }
             else
             {
-                float px, py, pz, rx, ry, rz;
+                float dx = px - last.px;
+                float dy = py - last.py;
+                float dz = pz - last.pz;
+                float distSq = dx * dx + dy * dy + dz * dz;
 
-                if (!findFloatField(json, "px", px) ||
-                    !findFloatField(json, "py", py) ||
-                    !findFloatField(json, "pz", pz) ||
-                    !findFloatField(json, "rx", rx) ||
-                    !findFloatField(json, "ry", ry) ||
-                    !findFloatField(json, "rz", rz))
+                auto elapsed =
+                    std::chrono::duration<double>(now - last.lastSendTime).count();
+
+                if (distSq < 0.0004f && elapsed < 0.05)
                 {
-                    response = R"({"type":"error","msg":"invalid float field"})";
-                    std::cout << "[Error] Invalid float in player_move from " << nickname << std::endl;
+                    return;
                 }
-                else
-                {
-                    SOCKET targetSocket = INVALID_SOCKET;
-                    if (room->player1.nickname == nickname)
-                        targetSocket = room->player2.socket;
-                    else if (room->player2.nickname == nickname)
-                        targetSocket = room->player1.socket;
 
-                    if (targetSocket != INVALID_SOCKET)
-                    {
-                        std::string moveMsg = "{";
-                        moveMsg += "\"type\":\"enemy_move\",";
-                        moveMsg += "\"nickname\":\"" + nickname + "\",";
-                        moveMsg += "\"px\":" + std::to_string(px) + ",";
-                        moveMsg += "\"py\":" + std::to_string(py) + ",";
-                        moveMsg += "\"pz\":" + std::to_string(pz) + ",";
-                        moveMsg += "\"rx\":" + std::to_string(rx) + ",";
-                        moveMsg += "\"ry\":" + std::to_string(ry) + ",";
-                        moveMsg += "\"rz\":" + std::to_string(rz);
-                        moveMsg += "}";
+                last.px = px; last.py = py; last.pz = pz;
+                last.rx = rx; last.ry = ry; last.rz = rz;
+                last.lastSendTime = now;
+            }
 
-                        uint32_t len = (uint32_t)moveMsg.size();
-                        send(targetSocket, (char*)&len, 4, 0);
-                        send(targetSocket, moveMsg.c_str(), len, 0);
-                    }
-                }
+
+            std::string moveMsg = "{";
+            moveMsg += "\"type\":\"enemy_move\",";
+            moveMsg += "\"nickname\":\"" + nickname + "\",";
+            moveMsg += "\"px\":" + std::to_string(px) + ",";
+            moveMsg += "\"py\":" + std::to_string(py) + ",";
+            moveMsg += "\"pz\":" + std::to_string(pz) + ",";
+            moveMsg += "\"rx\":" + std::to_string(rx) + ",";
+            moveMsg += "\"ry\":" + std::to_string(ry) + ",";
+            moveMsg += "\"rz\":" + std::to_string(rz);
+            moveMsg += "}";
+
+            uint32_t len = (uint32_t)moveMsg.size();
+            send(receiver->socket, (char*)&len, 4, 0);
+            send(receiver->socket, moveMsg.c_str(), len, 0);
             }
-            }
+
         else if (json.find("\"cmd\":\"player_win\"") != std::string::npos)
         {
             std::string nickname = findStringField(json, "nickname");
@@ -768,6 +845,42 @@ void ClientHandler::Run()
                     send(room->player2.socket, nextRoundMsg.c_str(), len2, 0);
                 }
             }
+            }
+        else if (json.find("\"cmd\":\"player_jump\"") != std::string::npos)
+        {
+            std::string nickname = findStringField(json, "nickname");
+            Room* room = roomMgr->FindRoomByPlayer(nickname);
+
+            if (!room)
+            {
+                std::cout << "[Jump] Room not found for " << nickname << std::endl;
+                return;
+            }
+
+            SOCKET targetSocket = INVALID_SOCKET;
+
+            if (room->player1.nickname == nickname)
+                targetSocket = room->player2.socket;
+            else if (room->player2.nickname == nickname)
+                targetSocket = room->player1.socket;
+
+            if (targetSocket == INVALID_SOCKET)
+                return;
+
+            float jumpVelocityY = 0.f;
+            findFloatField(json, "jumpVelocityY", jumpVelocityY);
+
+            std::string jumpMsg = "{";
+            jumpMsg += "\"type\":\"enemy_jump\",";
+            jumpMsg += "\"nickname\":\"" + nickname + "\",";
+            jumpMsg += "\"jumpVelocityY\":" + std::to_string(jumpVelocityY);
+            jumpMsg += "}";
+
+            uint32_t len = (uint32_t)jumpMsg.size();
+            send(targetSocket, (char*)&len, 4, 0);
+            send(targetSocket, jumpMsg.c_str(), len, 0);
+
+            std::cout << "[Jump] " << nickname << " jump broadcasted" << std::endl;
             }
 
         // === 결과 요청 ===

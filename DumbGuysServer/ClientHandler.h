@@ -40,6 +40,9 @@ private:
     RoomManager* roomMgr;
     MatchManager* matchMgr;
 
+    std::string accountId;
+    std::string nickname;
+
     bool recvFull(void* buffer, int length);
     bool sendFull(const void* buffer, int length);
 };
