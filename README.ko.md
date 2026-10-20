@@ -1,39 +1,26 @@
-# DumbGuys — Game Server
+# DumbGuys — Server
 
 [English](README.md) · [Korean](README.ko.md) · [Japanese](README.ja.md)
+
+계정과 로비, 경기, 외형 데이터가 연결되는 멀티플레이 팀 게임입니다.
 
 **C++ · C# · Unity** · 개발 기록
 
 [개발 사례 보기](https://ysl-ryudo.github.io/ko/work/dumbguys/) · [Portfolio](https://ysl-ryudo.github.io/ko/)
 
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys) (비공개 · 접근 권한 필요) · [DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer) (비공개 · 접근 권한 필요)
 
-DumbGuys Unity 클라이언트와 연결되는 Windows C++ 서버입니다.
+## 시스템별 담당 내용
 
-## 해결하려던 문제
+| 영역 | 구현 |
+|---|---|
+| 계정 | 계정·연결 처리 |
+| 로비에서 경기로 | 방·플레이어 상태와 Unity 클라이언트 연결 |
+| 플레이어 데이터 | 상점·외형 상태 |
 
-계정·방·플레이어 외형 정보를 로비와 경기 흐름으로 연결하는 작업입니다. 클라이언트와 서버를 서로 맞는 버전에서 살펴보는 것도 중요합니다.
-
-## 내 구현과 설계
-
-계정·연결 처리, 방·플레이어 상태, 상점·외형 데이터와 클라이언트 로비·경기 연동을 작업했습니다.
-
-### 구현 개요 · 개념 흐름도
-
-```mermaid
-flowchart LR
-    N0["Account / connection"] --> N1
-    N1["Lobby / room"] --> N2
-    N2["Match / player state"] --> N3
-    N3["Store / appearance"]
-```
-
-### 개발 시연 영상
-
-[![DumbGuys — DumbGuys full play](https://i.ytimg.com/vi/Z4tffAvRjJs/hqdefault.jpg)](https://www.youtube.com/watch?v=Z4tffAvRjJs)
+## 개발 시연 영상
 
 - [DumbGuys full play](https://www.youtube.com/watch?v=Z4tffAvRjJs)
-
-촬영 당시의 프로젝트 시연입니다. 게임 안에서 제가 맡은 작업은 아래 기여 항목으로 구분합니다.
 
 ## 내 기여
 
@@ -57,7 +44,3 @@ Windows C++ 워크로드가 설치된 Visual Studio에서 [DumbGuysServer.sln](D
 ## 개발·검증 범위
 
 과거 개발 서버입니다. 현재 성능이나 장애 내성에 대한 검증 완료를 주장하지 않습니다. 시연 버전을 정할 때 클라이언트의 후속 restore-1121 브랜치를 함께 확인해야 합니다.
-
-## 구현을 확인하는 방법
-
-시연 전 서버 기준 버전과 클라이언트의 후속 restore-1121 브랜치를 비교해야 합니다. 개발 기록은 구현 범위를 설명하며 새로 측정한 성능 결과는 아닙니다.
