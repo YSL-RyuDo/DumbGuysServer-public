@@ -57,13 +57,13 @@ Unityの移動、障害物、チュートリアル、外見とショップを開
 
 カテゴリ別ショップと外見画面を実装し、所有アイテム・装備データに接続しました。サーバーの試合・アカウント処理はロビー選択からプレイと結果までつながります。マッチング方針は後述します。
 
-[StoreManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/StoreScene/StoreManager.cs), [担当変更 edffcc8](https://github.com/YSL-RyuDo/DumbGuys/commit/edffcc86e34c4d817a000462dbbe19502d4843fe), [MyPageManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/MyPageScene/MyPageManager.cs), [担当変更 94edd35](https://github.com/YSL-RyuDo/DumbGuys/commit/94edd358e09412d75e7836ee8f7ff17519f206fe), [MatchManager.cpp (main)](https://github.com/YSL-RyuDo/DumbGuysServer/blob/75ad6626d21d7638d37240c85ff4a9aa481e5620/DumbGuysServer/MatchManager.cpp), [担当変更 bb103b5](https://github.com/YSL-RyuDo/DumbGuysServer/commit/bb103b5d1c143534126cf8dfb577812eef035d90)
+[StoreManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/StoreScene/StoreManager.cs), [担当変更 edffcc8](https://github.com/YSL-RyuDo/DumbGuys/commit/edffcc86e34c4d817a000462dbbe19502d4843fe), [MyPageManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/MyPageScene/MyPageManager.cs), [担当変更 94edd35](https://github.com/YSL-RyuDo/DumbGuys/commit/94edd358e09412d75e7836ee8f7ff17519f206fe), [MatchManager.cpp (main)](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/17995b22260af8c5e51f7057c7edfef1bc9918a1/DumbGuysServer/MatchManager.cpp), [担当変更 bb103b5](https://github.com/YSL-RyuDo/DumbGuysServer-public/commit/b966cd1c4233345d80acbedb8303cc8bc1c94556)
 
 ## 貢献の根拠
 
-[Source baseline / 코드 기준 / コード基準](https://github.com/YSL-RyuDo/DumbGuysServer/tree/2ba094126a0bb09ace4167dc3c2e956c4a39dec2)
+[Source baseline / 코드 기준 / コード基準](https://github.com/YSL-RyuDo/DumbGuysServer-public/tree/cbb604469beba3ca2cce3349aae4895d498379c7)
 
-[Development history / 개발 이력 / 開発履歴](https://github.com/YSL-RyuDo/DumbGuysServer/commits/main/?author=YSL-RyuDo)
+[Development history / 개발 이력 / 開発履歴](https://github.com/YSL-RyuDo/DumbGuysServer-public/commits/main/?author=YSL-RyuDo)
 
 外部素材・チームメンバーの貢献は区別します。
 
@@ -93,7 +93,7 @@ MatchManagerは待機プレイヤーのランク、スコア、レベルを比�
 
 許容範囲は参加人数と実力分布に応じた調整が必要です。取消・切断時には待機項目を除き、試合品質と待機時間を測定して基準を調整します。
 
-[DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
+[DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/526bdeb231522604a4a5c5fd39a31cc00544e0b1/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/526bdeb231522604a4a5c5fd39a31cc00544e0b1/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
 
 ### 移動方式を変え、物理処理を共有する
 
@@ -123,6 +123,6 @@ Windows C++ワークロードを備えたVisual Studioで[DumbGuysServer.sln](Du
 
 ## 関連リポジトリ
 
-[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 非公開・アクセス権が必要
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 公開ソース
 
-[DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer), 非公開・アクセス権が必要
+[DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer-public), 公開ソース

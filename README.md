@@ -57,13 +57,13 @@ Built tutorial managers with hints, fall and win triggers, and gameplay finish/f
 
 Built category-based store and profile appearance screens and connected them to owned-item and appearance data. The server's match and account processing supports the loop from lobby selection through gameplay and results; the matching policy is explained separately below.
 
-[StoreManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/StoreScene/StoreManager.cs), [My change edffcc8](https://github.com/YSL-RyuDo/DumbGuys/commit/edffcc86e34c4d817a000462dbbe19502d4843fe), [MyPageManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/MyPageScene/MyPageManager.cs), [My change 94edd35](https://github.com/YSL-RyuDo/DumbGuys/commit/94edd358e09412d75e7836ee8f7ff17519f206fe), [MatchManager.cpp (main)](https://github.com/YSL-RyuDo/DumbGuysServer/blob/75ad6626d21d7638d37240c85ff4a9aa481e5620/DumbGuysServer/MatchManager.cpp), [My change bb103b5](https://github.com/YSL-RyuDo/DumbGuysServer/commit/bb103b5d1c143534126cf8dfb577812eef035d90)
+[StoreManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/StoreScene/StoreManager.cs), [My change edffcc8](https://github.com/YSL-RyuDo/DumbGuys/commit/edffcc86e34c4d817a000462dbbe19502d4843fe), [MyPageManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/MyPageScene/MyPageManager.cs), [My change 94edd35](https://github.com/YSL-RyuDo/DumbGuys/commit/94edd358e09412d75e7836ee8f7ff17519f206fe), [MatchManager.cpp (main)](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/17995b22260af8c5e51f7057c7edfef1bc9918a1/DumbGuysServer/MatchManager.cpp), [My change bb103b5](https://github.com/YSL-RyuDo/DumbGuysServer-public/commit/b966cd1c4233345d80acbedb8303cc8bc1c94556)
 
 ## Contribution evidence
 
-[Source baseline / 코드 기준 / コード基準](https://github.com/YSL-RyuDo/DumbGuysServer/tree/2ba094126a0bb09ace4167dc3c2e956c4a39dec2)
+[Source baseline / 코드 기준 / コード基準](https://github.com/YSL-RyuDo/DumbGuysServer-public/tree/cbb604469beba3ca2cce3349aae4895d498379c7)
 
-[Development history / 개발 이력 / 開発履歴](https://github.com/YSL-RyuDo/DumbGuysServer/commits/main/?author=YSL-RyuDo)
+[Development history / 개발 이력 / 開発履歴](https://github.com/YSL-RyuDo/DumbGuysServer-public/commits/main/?author=YSL-RyuDo)
 
 ## Implementation and design
 
@@ -91,7 +91,7 @@ First-come pairing favors quick matches while ignoring skill similarity. Fixed s
 
 Thresholds depend on the player population and skill distribution. Cancellation and disconnects must remove waiting entries, while match-quality and wait-time measurements guide tuning.
 
-[DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
+[DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/526bdeb231522604a4a5c5fd39a31cc00544e0b1/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer-public/blob/526bdeb231522604a4a5c5fd39a31cc00544e0b1/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
 
 ### Different movement, one physics motor
 
@@ -121,6 +121,6 @@ Open [DumbGuysServer.sln](DumbGuysServer.sln) in Visual Studio with the Windows 
 
 ## Related repositories
 
-[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), Private, access required
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), Public source
 
-[DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer), Private, access required
+[DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer-public), Public source
