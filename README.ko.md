@@ -121,6 +121,6 @@ Windows C++ 워크로드가 설치된 Visual Studio에서 [DumbGuysServer.sln](D
 
 ## 관련 저장소
 
-[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 공개 소스
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 공개 저장소
 
 [DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer-public), 공개 소스

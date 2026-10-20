@@ -123,6 +123,6 @@ Windows C++ワークロードを備えたVisual Studioで[DumbGuysServer.sln](Du
 
 ## 関連リポジトリ
 
-[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 公開ソース
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), 公開リポジトリ
 
 [DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer-public), 公開ソース

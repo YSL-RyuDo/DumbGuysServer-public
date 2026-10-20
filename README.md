@@ -121,6 +121,6 @@ Open [DumbGuysServer.sln](DumbGuysServer.sln) in Visual Studio with the Windows 
 
 ## Related repositories
 
-[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), Public source
+[DumbGuys](https://github.com/YSL-RyuDo/DumbGuys), Public repository
 
 [DumbGuysServer](https://github.com/YSL-RyuDo/DumbGuysServer-public), Public source
