@@ -1,6 +1,8 @@
 # DumbGuys / Server
 
-[English](README.md), [Korean](README.ko.md), [Japanese](README.ja.md)
+<!-- portfolio-languages -->
+[![English (current)](https://ysl-ryudo.github.io/assets/diagrams/language-en-current.svg)](README.md) [![한국어](https://ysl-ryudo.github.io/assets/diagrams/language-ko.svg)](README.ko.md) [![日本語](https://ysl-ryudo.github.io/assets/diagrams/language-ja.svg)](README.ja.md)
+<!-- /portfolio-languages -->
 
 A multiplayer team game with connected account, lobby, match and appearance flows.
 
@@ -15,15 +17,17 @@ A multiplayer team game with connected account, lobby, match and appearance flow
 
 [DumbGuys full play](https://www.youtube.com/watch?v=Z4tffAvRjJs)
 
+## Inside the game
+
+[![The tutorial scene exercises the actual movement and jump path after account creation and lobby navigation.](https://ysl-ryudo.github.io/assets/gameplay/dumbguys-movement.webp)](https://ysl-ryudo.github.io/assets/gameplay/dumbguys-movement.webp)
+
+The tutorial scene exercises the actual movement and jump path after account creation and lobby navigation.
+
 ## What I built across the game
 
-I developed the Unity client and C++ server, including movement, obstacles, tutorials, appearance/store flows and match networking. The restore-1121 branch contains client work not present in the smaller main snapshot. Unity packages, sample code and imported art remain third-party work.
+I developed Unity movement, obstacles, tutorials, appearance and shop flows, and C++ server handling for accounts, matchmaking and match communication.
 
-**Player flow**
-
-Login → lobby and appearance → matching and loading → obstacle course → finish or fall → result
-
-Source links pin the inspected revision; contribution links identify my non-merge changes. Shared-file links do not imply sole authorship. Private source requires repository access.
+[![My implementation flow](https://ysl-ryudo.github.io/assets/diagrams/dumbguys-flow-en.svg)](https://ysl-ryudo.github.io/assets/diagrams/dumbguys-flow-en.svg)
 
 ### Movement strategies and character control
 
@@ -55,21 +59,11 @@ Built category-based store and profile appearance screens and connected them to 
 
 [StoreManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/StoreScene/StoreManager.cs), [My change edffcc8](https://github.com/YSL-RyuDo/DumbGuys/commit/edffcc86e34c4d817a000462dbbe19502d4843fe), [MyPageManager.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/MyPageScene/MyPageManager.cs), [My change 94edd35](https://github.com/YSL-RyuDo/DumbGuys/commit/94edd358e09412d75e7836ee8f7ff17519f206fe), [MatchManager.cpp (main)](https://github.com/YSL-RyuDo/DumbGuysServer/blob/75ad6626d21d7638d37240c85ff4a9aa481e5620/DumbGuysServer/MatchManager.cpp), [My change bb103b5](https://github.com/YSL-RyuDo/DumbGuysServer/commit/bb103b5d1c143534126cf8dfb577812eef035d90)
 
-## My contribution
-
-Implemented account and connection handling for the game client.
-
-Worked on room, match and player state, plus store and appearance-related data.
-
-Integrated the server with the client-side lobby and match flow.
-
 ## Contribution evidence
 
 [Source baseline / 코드 기준 / コード基準](https://github.com/YSL-RyuDo/DumbGuysServer/tree/2ba094126a0bb09ace4167dc3c2e956c4a39dec2)
 
 [Development history / 개발 이력 / 開発履歴](https://github.com/YSL-RyuDo/DumbGuysServer/commits/main/?author=YSL-RyuDo)
-
-Commits are evidence of the stated changes, not a percentage-of-authorship score. Third-party assets and teammates' work remain separately credited.
 
 ## Implementation and design
 
@@ -78,8 +72,6 @@ Accounts, rooms and player appearance need to carry through the lobby and match 
 I worked on account/connection handling, room and player state, store/appearance data and client-side lobby/match integration.
 
 ## How the code works and why it is structured this way
-
-These notes connect the inspected implementation to the constraints it addresses and its tradeoffs. Explanations of design consequences are code analysis, not a claim that every alternative was prototyped. Contribution links identify my changes within team projects; source links retain their original access permissions.
 
 ### Match criteria change with time spent waiting
 
@@ -97,7 +89,7 @@ First-come pairing favors quick matches while ignoring skill similarity. Fixed s
 
 **Tradeoffs and verification**
 
-The thresholds are implementation policy, not proof of fair matchmaking or shorter observed queues. Player population and cancellation/disconnect behavior need separate evaluation. The client reference below is the restore-1121 branch, so its integration state should not be assumed to equal the default branch.
+Thresholds depend on the player population and skill distribution. Cancellation and disconnects must remove waiting entries, while match-quality and wait-time measurements guide tuning.
 
 [DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
 
@@ -117,7 +109,7 @@ A single movement script with flags is economical for a small number of effects.
 
 **Tradeoffs and verification**
 
-The motor still depends on Unity physics and the game's ground query. Slope behavior, moving platforms, changing effects during a jump and network corrections need gameplay tests. A strategy interface alone does not demonstrate that those cases pass.
+The motor depends on Unity physics and ground checks. Slopes, moving platforms, effect changes during a jump and network correction require coordinated handling.
 
 [DumbGuys/IInputProvider.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Player/IInputProvider.cs), [DumbGuys/IMovementStrategy.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Player/IMovementStrategy.cs), [DumbGuys/CharacterMotor.cs (restore-1121)](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Player/CharacterMotor.cs)
 
@@ -126,10 +118,6 @@ The motor still depends on Unity physics and the game's ground query. Slope beha
 Open [DumbGuysServer.sln](DumbGuysServer.sln) in Visual Studio with the Windows C++ workload. Inspect the selected configuration, data paths, dependencies and endpoint settings before starting the matching client. Preserve existing account data.
 
 [DumbGuys](https://github.com/YSL-RyuDo/DumbGuys)
-
-## Development and verification scope
-
-Historical development server. This README makes no current performance or fault-tolerance claim. The client's later restore-1121 branch should be considered when selecting a compatible demo revision.
 
 ## Related repositories
 
