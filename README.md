@@ -43,6 +43,30 @@ I worked on account/connection handling, room and player state, store/appearance
 | Lobby to match | Room and player state linked to the Unity client |
 | Player data | Store and appearance state |
 
+## How the code works and why it is structured this way
+
+These notes connect the inspected implementation to the constraints it addresses and its tradeoffs. Explanations of design consequences are code analysis, not a claim that every alternative was prototyped. Contribution links identify my changes within team projects; source links retain their original access permissions.
+
+### Match criteria change with time spent waiting
+
+**Implementation**
+
+MatchManager compares queued players by rank, score and level, then widens selected thresholds as waiting time grows. On a match it creates a room and sends the participant/spawn information. Client and server also exchange owned items and appearance data for the surrounding lobby flow.
+
+**Design rationale**
+
+Strict similarity and short waiting time can conflict when few compatible players are queued. Time-dependent thresholds make that tradeoff explicit instead of accepting any opponent immediately or waiting indefinitely for an exact match. Keeping ownership and appearance distinct also separates what a player has from what they currently display.
+
+**Alternatives and the current tradeoff**
+
+First-come pairing favors quick matches while ignoring skill similarity. Fixed similarity limits are predictable but can leave outliers waiting. Widening thresholds over time balances those aims explicitly, but choosing the thresholds still requires population and match-quality evidence.
+
+**Tradeoffs and verification**
+
+The thresholds are implementation policy, not proof of fair matchmaking or shorter observed queues. Player population and cancellation/disconnect behavior need separate evaluation. The client reference below is the restore-1121 branch, so its integration state should not be assumed to equal the default branch.
+
+[DumbGuysServer/MatchManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/MatchManager.cpp), [DumbGuysServer/OwnedItemManager.cpp](https://github.com/YSL-RyuDo/DumbGuysServer/blob/6c9f9da948008ace439ebfc7a1aeb4b130da12f0/DumbGuysServer/OwnedItemManager.cpp), [DumbGuys/ClientSession.cs](https://github.com/YSL-RyuDo/DumbGuys/blob/6c30b670a68da9a89d8ad0445de376cd620a21a7/Assets/Scripts/Network/ClientSession.cs)
+
 ## Open and inspect
 
 Open [DumbGuysServer.sln](DumbGuysServer.sln) in Visual Studio with the Windows C++ workload. Inspect the selected configuration, data paths, dependencies and endpoint settings before starting the matching client. Preserve existing account data.
